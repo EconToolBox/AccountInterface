@@ -1,9 +1,11 @@
 package org.kaiaccount.account.inter.type.player;
 
 import org.bukkit.OfflinePlayer;
+import org.bukkit.plugin.*;
 import org.jetbrains.annotations.CheckReturnValue;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.UnmodifiableView;
+import org.kaiaccount.AccountInterfaceManager;
 import org.kaiaccount.account.inter.transfer.IsolatedTransaction;
 import org.kaiaccount.account.inter.transfer.payment.Payment;
 import org.kaiaccount.account.inter.transfer.payment.PaymentBuilder;
@@ -13,7 +15,7 @@ import org.kaiaccount.account.inter.type.AccountType;
 import org.kaiaccount.account.inter.type.IsolatedAccount;
 import org.kaiaccount.account.inter.type.named.bank.player.PlayerBankAccount;
 import org.kaiaccount.account.inter.type.named.bank.player.PlayerBankAccountBuilder;
-
+import org.kaiaccount.AccountInterface;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -105,8 +107,8 @@ public abstract class AbstractPlayerAccount<Self extends AbstractPlayerAccount<S
         CompletableFuture<TransactionResult> ret = new CompletableFuture<>();
         new IsolatedTransaction(map -> {
             IsolatedAccount isolated = map.get(this);
-            Stream<CompletableFuture<? extends TransactionResult>> stream =
-                    Arrays.stream(transactions).parallel().map(f -> f.apply(isolated));
+            Stream<CompletableFuture<? extends TransactionResult>> stream = Arrays.stream(transactions).parallel()
+                    .map(f -> f.apply(isolated));
             return stream.toList();
         }, this).start().thenAccept(ret::complete);
         return ret;
@@ -124,7 +126,7 @@ public abstract class AbstractPlayerAccount<Self extends AbstractPlayerAccount<S
     @UnmodifiableView
     @CheckReturnValue
     public @NotNull Collection<PlayerBankAccount> getBanks() {
-        //load others
+        // load others
         return Collections.unmodifiableCollection(this.banks);
     }
 
@@ -133,6 +135,15 @@ public abstract class AbstractPlayerAccount<Self extends AbstractPlayerAccount<S
         PlayerBankAccount account = new PlayerBankAccountBuilder().setName(name).setAccount(this).build();
         this.banks.add(account);
         return account;
+    }
+
+    @Override
+    public @NotNull boolean deleteBankAccount(@NotNull PlayerBankAccount account) {
+        for (UUID accesser : account.getAccounts().keySet()) {
+            account.removeAccount(accesser);
+        }
+        this.banks.remove(account);
+        return true;
     }
 
     @Override
